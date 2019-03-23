@@ -18,13 +18,11 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 
 // Select which 'port' M1, M2, M3 or M4. In this case, M1
 Adafruit_DCMotor *electroMagnet = AFMS.getMotor(1);
-// You can also make another motor on port M2
-//Adafruit_DCMotor *myOtherMotor = AFMS.getMotor(2);
 
-
+TimePlot MyPlot;
 float P = 3.3;
 float I;
-float D = - .250;
+float D =- .450;
 float DvalNew;
 float DvalOld;
 unsigned long currentTime;
@@ -32,6 +30,7 @@ unsigned long lastTime;
 
 int setPoint = -80;
 int sensorValue;
+int lastSensorValue;
 int magnetPower;
 int lastMagnetPower;
 
@@ -44,7 +43,7 @@ int hallSensor = A2;
 
 
 void setMagnet(int input){
-  magnetPower = int(1/40.0 * input +39/40.0 * lastMagnetPower);
+  magnetPower = int(1/10.0 * input +9/10.0 * lastMagnetPower);
   lastMagnetPower = magnetPower;
   if (input < 0 ){
     if(input < -255)
@@ -62,24 +61,24 @@ void setMagnet(int input){
     electroMagnet->run(FORWARD);
   }
   // Serial.println(magnetPower);
-  electroMagnet->setSpeed(abs(input));
+  electroMagnet->setSpeed(abs(magnetPower));
 }
 
 void PIDControl(float input){
-  float DT = (currentTime - lastTime)/100000.0;
+//  float DT = (currentTime - lastTime)/100000.0;
   // Serial.println(DT, 6);
   DvalNew = (input - lastInputVal) / DT;
   lastInputVal = input;
-  lastTime = currentTime;
-  DvalOld = (1.0/20.0 * DvalNew + 19.0/20.0 * DvalOld);
+  DvalOld = (1.0/80.0 * DvalNew + 79.0/80.0 * DvalOld);
   magVal = P * (input - setPoint) - D * DvalOld; 
-
-  setMagnet(magVal);
+  
+  // setMagnet(magVal);
 }
 
 float removeElectromagnetEffect(int sensorValue, int currentValue)
 {
-  return sensorValue + -515.6785 + currentValue * 0.4456;
+  
+  return sensorValue + -518.0703 + currentValue * 0.2994;
 }
 
 void setup() {
@@ -98,39 +97,44 @@ void setup() {
   // Set the speed to start, from 0 (off) to 255 (max speed)
   electroMagnet->setSpeed(150);
   electroMagnet->run(FORWARD);
-  // turn on motor
   electroMagnet->run(RELEASE);
 }
 
 
 
 void loop() {
-  TimePlot MyPlot;
+  
   sensorValue = analogRead(hallSensor);
   currentTime = micros();
+
+  float dT = (currentTime - lastTime)/100000.0;
+  lastTime = currentTime;
+  dIdt = (sensorValue - lastSensorValue)/dT;
+  
   //Serial.println(DvalOld);
 //  Serial.println(removeElectromagnetEffect(sensorValue, magnetPower));
-  PIDControl(removeElectromagnetEffect(sensorValue, magnetPower));
-  delayMicroseconds(10);
-}
+//  PIDControl(removeElectromagnetEffect(sensorValue, magnetPower));
+  //delayMicroseconds(10);
 
-//  int i = -255;
-//  for (i=-255; i<255; i++) {
-//    setMagnet(i);  
-//    sensorValue = analogRead(hallSensor);
-//    
-//    MyPlot.SendData("HallSensor", sensorValue);
+
+  int i = -255;
+  int fFreq = 1;
+  for (i=-255; i<255; i += fFreq) {
+    setMagnet(i);  
+    sensorValue = analogRead(hallSensor);
+    
+    MyPlot.SendData("HallSensor", sensorValue);
 //    MyPlot.SendData("i", i);
-//    MyPlot.SendData("ElectromagnetRemoved", removeElectromagnetEffect(sensorValue, i));
-////    Serial.println(analogRead(hallSensor));
-//    //delayMicroseconds(10);
-//  }
-//  for (i=255; i>-255; i--) {
-//    setMagnet(i); 
-//    sensorValue = analogRead(hallSensor);
-//    MyPlot.SendData("HallSensor", sensorValue);
-//    MyPlot.SendData("ElectromagnetRemoved", removeElectromagnetEffect(sensorValue, i));
+    MyPlot.SendData("ElectromagnetRemoved", removeElectromagnetEffect(sensorValue, i));
+//    Serial.println(analogRead(hallSensor));
+    //delayMicroseconds(10);
+  }
+  for (i=255; i>-255; i-= fFreq) {
+    setMagnet(i); 
+    sensorValue = analogRead(hallSensor);
+    MyPlot.SendData("HallSensor", sensorValue);
+    MyPlot.SendData("ElectromagnetRemoved", removeElectromagnetEffect(sensorValue, i));
 //    MyPlot.SendData("i", i);
-//    //delayMicroseconds(10);
-//  }
-//}
+    //delayMicroseconds(10);
+  }
+}

@@ -1,8 +1,9 @@
-data = hallSensorVsElectromagnet ;
-
-iVal = data.iVal(2:end);
-hallSensorVal = data.HallSensorVal(2:end);
+% data = hallSensorVsElectromagnetRecharactarized ;
+data = magnetPlot;
+iVal = data.iVal;
+hallSensorVal = data.hallSensorVal;
 plot(iVal, hallSensorVal);
+size(ones(length(iVal),1))
 X = [ones(length(iVal),1) iVal]
 b = X\hallSensorVal
 
